@@ -4,17 +4,11 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
 puppeteer.use(StealthPlugin());
 
-// const url = 'https://www.vprok.ru/product/spmi-svinina-duhovaya-1kg--1131362';
-
-const url =
-  'https://www.vprok.ru/product/domik-v-derevne-dom-v-der-moloko-ster-3-2-950g--309202';
+const [, , url, region] = process.argv;
 
 (async () => {
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
-
-  //установка региона 
-  // node puppeteer.js https://www.vprok.ru/product/domik-v-derevne-dom-v-der-moloko-ster-3-2-950g--309202 "Санкт-Петербург и область"
 
   console.log('Устанавливаем размер окна...');
   await page.setUserAgent(
@@ -27,8 +21,30 @@ const url =
   console.log('Ждем 10 секунд...');
   await new Promise((resolve) => setTimeout(resolve, 10000)); // Ожидание 10 секунд
 
+  await page.waitForSelector('[class*="Region_region__"]');
+  await page.click('[class*="Region_region__"]');
+
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  await page.waitForSelector('[class*="UiRegionListBase_item"]'); // Ждем появления элементов с этим классом
+  await page.evaluate(
+    (region) => {
+      const items = document.querySelectorAll(
+        '[class*="UiRegionListBase_item"]'
+      );
+      for (let item of items) {
+        if (item.textContent.includes(region)) {
+          item.click();
+          break;
+        }
+      }
+    },
+    [region]
+  );
+
+  await new Promise((resolve) => setTimeout(resolve, 3000));
+
   const aboutProduct = await page.evaluate(() => {
-    // error
     const defaultPriceClass = '[class*="Price_role_regular"]';
     const discountPriceClass = '[class*="Price_role_discount"]';
     const discountOldPriceClass = '[class*="Price_role_old"]';
@@ -85,21 +101,18 @@ const url =
     return resultObj;
   });
 
-  // Логирование результата на стороне Node.js
-  //   console.log('Цены:', price);
-
   console.log('Делаем скриншот...');
 
   await page.screenshot({ path: 'screenshot.png', fullPage: true });
-  //   #__next > div.FeatureAppLayoutBase_layout__0HSBo.FeatureAppLayoutBase_hideBannerMobile__97CUm.FeatureAppLayoutBase_hideBannerTablet__dCMoJ.FeatureAppLayoutBase_hideBannerDesktop__gPdf1 > main > div:nth-child(3) > div > div.ProductPage_informationBlock__vDYCH > div.ProductPage_desktopBuy__cyRrC > div > div > div > div.PriceInfo_root__GX9Xp > span
 
   console.log('Готово! Скриншот сохранен.');
 
   await browser.close();
+
   // Данные, которые мы хотим записать в файл
   const data = `
    price=${aboutProduct.price}
-   priceOld=${aboutProduct.priceOld}
+   priceOld=${aboutProduct.priceOld || '-'}
    rating=${aboutProduct.rating}
    reviewCount=${aboutProduct.reviews}
 `;
