@@ -1,0 +1,11 @@
+{
+  "extends": ["eslint:recommended", "plugin:prettier/recommended"],
+  "env": {
+    "node": true,
+    "es2021": true
+  },
+  "rules": {
+    "prettier/prettier": "error",
+    "no-unused-vars": "warn"
+  }
+}
